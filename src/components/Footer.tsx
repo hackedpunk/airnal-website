@@ -30,7 +30,7 @@ export function Footer() {
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-[13px] tracking-wide text-brand-text-secondary hover:text-brand-ivory transition-colors"
+                className="text-[13px] tracking-wide text-brand-text-secondary hover:text-metallic transition-colors"
               >
                 {link.name}
               </Link>
@@ -39,14 +39,14 @@ export function Footer() {
         </div>
 
         <div className="mt-24 pt-8 border-t border-brand-border flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-[11px] tracking-[0.1em] text-brand-silver/60 uppercase">
+          <p className="text-[11px] tracking-[0.1em] text-brand-text-muted uppercase">
             © 2027 AIRNAL. All rights reserved.
           </p>
           <a
             href="https://airnal.in"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[11px] tracking-[0.1em] text-brand-silver/60 hover:text-brand-ivory uppercase transition-colors"
+            className="text-[11px] tracking-[0.1em] text-brand-text-muted hover:text-metallic uppercase transition-colors"
           >
             airnal.in
           </a>

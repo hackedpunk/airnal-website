@@ -5,26 +5,60 @@
   --color-brand-bg-secondary: #0D0D0D;
   --color-brand-bg-alt1: #0B0B0B;
   --color-brand-bg-alt2: #080808;
-  --color-brand-elevated: #131313;
+  --color-brand-elevated: #121212;
+  --color-brand-deep: #171512;
 
-  --color-brand-text: #F4F1EA;
-  --color-brand-text-secondary: #A7A39B;
-  --color-brand-text-muted: #6F6C66;
+  --color-brand-text: #F3F0E8;
+  --color-brand-text-secondary: #B5B0A5;
+  --color-brand-text-muted: #77736B;
 
-  --color-brand-ivory: #E8E3D8;
-  --color-brand-silver: #B8B8B3;
-  --color-brand-metallic: #B7A98B;
+  --color-brand-ivory: #F3F0E8;
+  --color-brand-silver: #B5B0A5;
 
-  --color-brand-border: rgba(244, 241, 234, 0.10);
-  --color-brand-border-strong: rgba(244, 241, 234, 0.16);
+  --color-metallic-gold-dark: #6B522D;
+  --color-metallic-gold-shadow: #80643A;
+  --color-metallic-gold-mid: #A88752;
+  --color-metallic-gold: #B99A61;
+  --color-metallic-gold-light: #D2B77A;
+  --color-metallic-highlight: #E1CCA0;
+
+  --color-brand-border: rgba(243, 240, 232, 0.10);
+  --color-brand-border-strong: rgba(243, 240, 232, 0.16);
 
   --font-sans: var(--font-brand);
+}
+
+@utility text-metallic {
+  background-image: linear-gradient(
+    110deg,
+    var(--color-metallic-gold-dark) 0%,
+    var(--color-metallic-gold-mid) 25%,
+    var(--color-metallic-gold-light) 45%,
+    var(--color-metallic-highlight) 52%,
+    var(--color-metallic-gold-mid) 70%,
+    var(--color-metallic-gold-dark) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-metallic {
+  background-image: linear-gradient(
+    110deg,
+    var(--color-metallic-gold-dark) 0%,
+    var(--color-metallic-gold-mid) 25%,
+    var(--color-metallic-gold-light) 45%,
+    var(--color-metallic-highlight) 52%,
+    var(--color-metallic-gold-mid) 70%,
+    var(--color-metallic-gold-dark) 100%
+  );
 }
 
 @layer base {
   :root {
     --background: #070707;
-    --foreground: #F4F1EA;
+    --foreground: #F3F0E8;
   }
 }
 
@@ -45,7 +79,7 @@ body {
 }
 
 ::selection {
-  background-color: #B8B8B3;
+  background-color: var(--color-metallic-gold-mid);
   color: #070707;
 }
 
@@ -56,9 +90,9 @@ body {
   background: #070707;
 }
 ::-webkit-scrollbar-thumb {
-  background: #131313;
+  background: #121212;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #A7A39B;
+  background: var(--color-metallic-gold-shadow);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion, AnimatePresence } from "framer-motion";
@@ -62,12 +62,39 @@ export function CinematicHero() {
   const [activeState, setActiveState] = useState<number>(0);
   const [isReducedMotion, setIsReducedMotion] = useState(false);
 
-  const progressObj = useRef({ target: 0, current: 0 });
+  // Durations kept strictly out of React state to safeguard against re-renders
+  const durationsRef = useRef<number[]>([10, 10, 10, 10]);
+  const totalDurationRef = useRef<number>(40);
+
+  // Pure refs for global non-blocking timeline engine
+  const progressObj = useRef({ target: 0 });
+  const timeObj = useRef({ current: 0 });
   const activeStateRef = useRef(0);
+  const navHiddenRef = useRef(false);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setIsReducedMotion(prefersReducedMotion);
+
+    // Initial check for loadedmetadata to measure true combined timeline
+    const updateDurations = () => {
+      let total = 0;
+      const durs = videoRefs.current.map((vid) => {
+        const d = (vid && isFinite(vid.duration) && vid.duration > 0) ? vid.duration : 10;
+        total += d;
+        return d;
+      });
+      durationsRef.current = durs;
+      totalDurationRef.current = total;
+    };
+
+    updateDurations();
+
+    videoRefs.current.forEach((vid) => {
+      if (vid) {
+        vid.addEventListener("loadedmetadata", updateDurations);
+      }
+    });
 
     let tickFn: () => void;
 
@@ -78,34 +105,63 @@ export function CinematicHero() {
         end: "bottom bottom",
         scrub: true,
         onUpdate: (self) => {
-          progressObj.current.target = self.progress;
+          progressObj.current.target = Math.max(0, Math.min(1, self.progress));
         },
       });
 
       tickFn = () => {
-        const target = progressObj.current.target;
-        const current = progressObj.current.current;
+        const totalDuration = totalDurationRef.current;
+        if (prefersReducedMotion || totalDuration === 0) return;
 
-        // If we've reached the target, do nothing
-        if (target === current) return;
+        const targetProgress = progressObj.current.target;
 
-        const diff = target - current;
-        // Adjust the easing factor (e.g. 0.05 = 5% catchup per frame)
-        // deltaRatio helps ensure consistency across different screen refresh rates
-        const deltaRatio = gsap.ticker.deltaRatio(60) || 1;
-        const smoothingFactor = 0.05;
-
-        let newCurrent = current + diff * smoothingFactor * deltaRatio;
-
-        // Snap when extremely close to prevent tiny oscillations
-        if (Math.abs(target - newCurrent) < 0.0001) {
-          newCurrent = target;
+        // Handle navbar visibility (raw scroll progress limits reactivity lag)
+        const targetNavHidden = targetProgress >= 0.03 && targetProgress <= 0.99;
+        if (targetNavHidden !== navHiddenRef.current) {
+          navHiddenRef.current = targetNavHidden;
+          window.dispatchEvent(new CustomEvent('toggle-navbar', { detail: { hidden: targetNavHidden } }));
         }
 
-        progressObj.current.current = newCurrent;
-        const p = newCurrent;
+        const targetTime = targetProgress * totalDuration;
+        let currentTime = timeObj.current.current;
 
-        // 1. Determine active narrative state based on SMOOTHED progress
+        const diff = targetTime - currentTime;
+
+        if (Math.abs(diff) < 0.001) {
+          if (targetTime !== currentTime) {
+            currentTime = targetTime;
+            timeObj.current.current = currentTime;
+          }
+        } else {
+          // Smoothing calculation provides responsive catchup for small movements
+          const deltaRatio = gsap.ticker.deltaRatio(60) || 1;
+          const smoothingFactor = 0.08;
+          let step = diff * smoothingFactor * deltaRatio;
+
+          // Real time delta (assuming ~60fps baseline for deltaRatio)
+          const frameDeltaSec = deltaRatio * (1 / 60);
+
+          // VELOCITY CLAMPING: Capped at maximum 2.5x cinematic playback speed
+          // Ensures a 40s sequence cannot be scrubbed visually faster than ~16 real seconds.
+          // Target jumps instantly on fast scroll, while video smoothly travels toward it without ever racing artificially fast.
+          const maxTimelineSpeed = 2.5;
+          const maxStep = maxTimelineSpeed * frameDeltaSec;
+
+          if (Math.abs(step) > maxStep) {
+            step = Math.sign(step) * maxStep;
+          }
+
+          currentTime += step;
+
+          // Final safety bound
+          currentTime = Math.max(0, Math.min(currentTime, totalDuration));
+          timeObj.current.current = currentTime;
+        }
+
+        // Convert the clamped timeline position back into global UI progress mapping [0, 1]
+        const p = currentTime / totalDuration;
+
+        // 1. Determine active narrative state based on CLAMPED cinematic progress allowing for explicit gaps
         let nextState = -1;
         if (p >= 0 && p < 0.18) nextState = 0;
         else if (p >= 0.21 && p < 0.39) nextState = 1;
@@ -118,27 +174,30 @@ export function CinematicHero() {
           setActiveState(nextState);
         }
 
-        if (prefersReducedMotion) {
-          // For reduced motion, just show the first video statically with no scrub,
-          // but still allow text narrative states to progress as user scrolls.
-          return;
+        // 2. Map global cinematic progress onto the exact video timeline segmentation
+        let accumulated = 0;
+        let segment = 0;
+        let segmentTime = 0;
+
+        for (let i = 0; i < durationsRef.current.length; i++) {
+          const d = durationsRef.current[i];
+          if (currentTime <= accumulated + d || i === durationsRef.current.length - 1) {
+            segment = i;
+            segmentTime = currentTime - accumulated;
+            break;
+          }
+          accumulated += d;
         }
 
-        // 2. Control video playback based on SMOOTHED progress
-        // 4 videos mapping exactly to 0-0.25, 0.25-0.50, 0.50-0.75, 0.75-1.0
-        const segment = Math.min(Math.floor(p * 4), 3);
-        const segmentProgress = (p - segment * 0.25) / 0.25;
+        segmentTime = Math.max(0, Math.min(segmentTime, durationsRef.current[segment] - 0.01));
 
+        // 3. Coordinate all video elements seamlessly per-frame
         videoRefs.current.forEach((vid, i) => {
           if (!vid) return;
           if (i === segment) {
             if (vid.style.opacity !== "1") vid.style.opacity = "1";
             if (vid.readyState >= 2) {
-              // Ensure duration exists, default to 5s if still loading
-              const duration = isFinite(vid.duration) && vid.duration > 0 ? vid.duration : 1;
-              // Safety bound current time
-              const targetTime = Math.min(segmentProgress * duration, duration - 0.01);
-              vid.currentTime = targetTime;
+              vid.currentTime = segmentTime;
             }
           } else {
             if (vid.style.opacity !== "0") vid.style.opacity = "0";
@@ -152,6 +211,9 @@ export function CinematicHero() {
     return () => {
       if (tickFn) gsap.ticker.remove(tickFn);
       ctx.revert();
+      videoRefs.current.forEach((vid) => {
+        if (vid) vid.removeEventListener("loadedmetadata", updateDurations);
+      });
     };
   }, []);
 
@@ -195,9 +257,11 @@ export function CinematicHero() {
                   exit={{ opacity: 0, y: -16 }}
                   transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <span className="inline-block mb-6 md:mb-8 text-[10px] md:text-[11px] font-semibold tracking-[0.25em] text-brand-silver uppercase">
-                    {NARRATIVE_STATES[activeState].chapter} / {NARRATIVE_STATES[activeState].label}
-                  </span>
+                  <div className="inline-block mb-6 md:mb-8 text-[10px] md:text-[11px] font-semibold tracking-[0.25em] uppercase">
+                    <span className="text-metallic">{NARRATIVE_STATES[activeState].chapter}</span>
+                    <span className="text-brand-text-muted mx-1">/</span>
+                    <span className="text-brand-ivory">{NARRATIVE_STATES[activeState].label}</span>
+                  </div>
 
                   <h1 className="text-4xl md:text-5xl lg:text-[4rem] font-medium leading-[1.05] tracking-tight text-brand-text mb-6 md:mb-8 whitespace-pre-line">
                     {NARRATIVE_STATES[activeState].heading}
@@ -211,19 +275,19 @@ export function CinematicHero() {
                     <div className="flex flex-col sm:flex-row gap-4">
                       <Link
                         href="#about"
-                        className="group inline-flex items-center justify-center px-8 py-4 text-[13px] font-medium tracking-wide text-brand-bg bg-brand-ivory hover:bg-brand-text hover:-translate-y-[1px] transition-all duration-300 rounded-[2px]"
+                        className="group inline-flex items-center justify-center px-8 py-4 text-[13px] font-medium tracking-wide text-brand-bg bg-brand-ivory hover:bg-metallic hover:-translate-y-[1px] transition-all duration-300 rounded-[2px]"
                       >
                         Explore AIRNAL
                         <ArrowRight className="ml-2 w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                       </Link>
 
-                      <Link
-                        href="#contact"
-                        className="group inline-flex items-center justify-center px-8 py-4 text-[13px] font-medium tracking-wide text-brand-ivory border border-brand-border-strong hover:bg-brand-border hover:text-brand-text transition-all duration-300 rounded-[2px]"
+                      <button
+                        onClick={() => window.dispatchEvent(new CustomEvent("open-launch-modal"))}
+                        className="group inline-flex items-center justify-center px-8 py-4 text-[13px] font-medium tracking-wide text-brand-ivory border border-[var(--color-metallic-gold-shadow)]/40 bg-transparent hover:border-[var(--color-metallic-gold-mid)] transition-all duration-300 rounded-[2px]"
                       >
                         Start a Conversation
                         <ArrowRight className="ml-2 w-4 h-4 transform group-hover:translate-x-1 transition-transform opacity-70" />
-                      </Link>
+                      </button>
                     </div>
                   )}
                 </motion.div>
@@ -244,11 +308,13 @@ export function CinematicHero() {
               transition={{ duration: 0.5 }}
             >
               <div className="flex items-center gap-4">
-                <span className="w-12 h-px bg-brand-silver/30 inline-block" />
-                <span className="text-[10px] md:text-[11px] font-medium tracking-[0.2em] text-brand-silver/80 uppercase">
-                  {NARRATIVE_STATES[activeState].chapter} / 05
-                </span>
-                <span className="text-[10px] md:text-[11px] uppercase tracking-widest text-brand-text-muted">
+                <span className="w-12 h-px bg-metallic opacity-60 inline-block" />
+                <div className="text-[10px] md:text-[11px] font-medium tracking-[0.2em] uppercase">
+                  <span className="text-metallic">{NARRATIVE_STATES[activeState].chapter}</span>
+                  <span className="text-brand-text-muted mx-1">/</span>
+                  <span className="text-brand-text-muted">05</span>
+                </div>
+                <span className="text-[10px] md:text-[11px] uppercase tracking-widest text-brand-ivory/80">
                   — {NARRATIVE_STATES[activeState].label}
                 </span>
               </div>

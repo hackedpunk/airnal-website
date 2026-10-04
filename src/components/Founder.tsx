@@ -5,74 +5,89 @@ import { motion } from "framer-motion";
 export function Founder() {
   return (
     <section id="vision" className="py-24 md:py-48 relative border-t border-brand-border bg-brand-bg-alt2">
-      <div className="container mx-auto px-6 md:px-12">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-16 md:gap-24 items-center md:items-start">
+      <div className="container mx-auto px-6 md:px-12 text-center">
+        <div className="max-w-3xl mx-auto flex flex-col items-center">
 
-          {/* Photo Placeholder */}
-          <div className="w-full md:w-5/12 md:order-last">
-            <motion.div
-              className="aspect-[4/5] bg-brand-elevated border border-brand-border flex items-center justify-center relative overflow-hidden"
-              initial={{ opacity: 0, scale: 0.98 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            >
-              {/* Subtle visual placeholder for image */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-brand-bg to-brand-elevated opacity-30" />
-              <div className="absolute inset-0 ring-1 ring-inset ring-brand-border-strong/50 pointer-events-none" />
-              <span className="text-[11px] uppercase tracking-[0.25em] text-brand-silver/50 relative z-10">
-                PORTRAIT PLACEHOLDER
-              </span>
-            </motion.div>
-          </div>
+          {/* Heading */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8 }}
+            className="mb-12 md:mb-16"
+          >
+            <div className="text-[11px] font-semibold tracking-[0.25em] uppercase">
+              <span className="text-metallic">07</span>
+              <span className="text-brand-text-muted mx-1">/</span>
+              <span className="text-brand-ivory">FOUNDER</span>
+            </div>
+          </motion.div>
 
-          {/* Content */}
-          <div className="w-full md:w-7/12 py-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8 }}
-            >
-              <h2 className="text-3xl md:text-[2.75rem] font-medium tracking-tight text-brand-text leading-[1.1] mb-16 max-w-lg">
-                Built by a founder who believes technology should feel human.
-              </h2>
-            </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="flex flex-col gap-3 mb-10"
+          >
+            <h2 className="text-2xl md:text-3xl text-brand-ivory font-medium tracking-wide">
+              ARSALAN SAFDAR
+            </h2>
+            <h3 className="text-[11px] font-semibold text-brand-text-secondary tracking-[0.2em] uppercase">
+              Founder of AIRNAL
+            </h3>
+          </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8, delay: 0.1 }}
-              className="flex flex-col gap-3 mb-16"
-            >
-              <h3 className="text-xl md:text-2xl text-brand-ivory font-medium">Arsalan Safdar</h3>
-              <p className="text-[11px] font-semibold text-brand-silver tracking-[0.2em] uppercase">Founder, AIRNAL</p>
-            </motion.div>
+          {/* Divider */}
+          <motion.div
+            initial={{ opacity: 0, scaleX: 0 }}
+            whileInView={{ opacity: 1, scaleX: 1 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
+            className="w-16 h-px bg-[var(--color-metallic-gold-shadow)]/40 mb-12"
+          />
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="flex flex-col gap-6"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="flex flex-col gap-6 md:gap-8 mb-16 text-lg md:text-2xl text-brand-text-secondary font-light leading-relaxed text-center"
+          >
+            <p>
+              AIRNAL started with a simple idea: technology should not make things more complicated. It should make ambitious ideas easier to understand, build and bring to life.
+            </p>
+            <p>
+              I founded AIRNAL to explore what happens when artificial intelligence, thoughtful design and engineering come together. We are starting by building intelligent products, while working toward a broader vision of technology that feels useful, intuitive and human.
+            </p>
+            <p>
+              There is still a long way to go. But AIRNAL is being built with the belief that the best technology is not the technology that demands attention — it is the technology that quietly makes what seemed difficult possible.
+            </p>
+          </motion.div>
+
+          {/* Contact Links */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="flex gap-8 justify-center items-center"
+          >
+            <a
+              href="https://www.linkedin.com/in/arsalan-safdar-131748408"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[13px] tracking-widest text-brand-text-secondary hover:text-metallic transition-all duration-300 border-b border-[var(--color-metallic-gold-shadow)]/40 hover:border-[var(--color-metallic-gold-mid)] uppercase hover:-translate-y-px pb-1"
             >
-              {/* Social Links Placeholders */}
-              {[
-                { label: "LinkedIn", href: "#" },
-                { label: "GitHub", href: "#" },
-                { label: "Email", href: "#" },
-              ].map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  className="text-[13px] tracking-widest text-brand-text-secondary hover:text-brand-ivory transition-colors border-b border-brand-border hover:border-brand-ivory w-fit pb-1 uppercase"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </motion.div>
-          </div>
+              LinkedIn
+            </a>
+            <a
+              href="mailto:airnal.business@gmail.com"
+              className="text-[13px] tracking-widest text-brand-text-secondary hover:text-metallic transition-all duration-300 border-b border-[var(--color-metallic-gold-shadow)]/40 hover:border-[var(--color-metallic-gold-mid)] uppercase hover:-translate-y-px pb-1"
+            >
+              Email
+            </a>
+          </motion.div>
 
         </div>
       </div>
