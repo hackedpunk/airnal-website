@@ -71,6 +71,7 @@ export function CinematicHero() {
   const timeObj = useRef({ current: 0 });
   const activeStateRef = useRef(0);
   const navHiddenRef = useRef(false);
+  const lastAssignedTimeRef = useRef([-1, -1, -1, -1]);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -134,7 +135,8 @@ export function CinematicHero() {
           }
         } else {
           // Smoothing calculation provides responsive catchup for small movements
-          const deltaRatio = gsap.ticker.deltaRatio(60) || 1;
+          // Clamp deltaRatio so a single lag spike doesn't cause a massive jump in the timeline
+          const deltaRatio = Math.min(gsap.ticker.deltaRatio(60) || 1, 1.5);
           const smoothingFactor = 0.08;
           let step = diff * smoothingFactor * deltaRatio;
 
@@ -197,7 +199,12 @@ export function CinematicHero() {
           if (i === segment) {
             if (vid.style.opacity !== "1") vid.style.opacity = "1";
             if (vid.readyState >= 2) {
-              vid.currentTime = segmentTime;
+              const lastAssigned = lastAssignedTimeRef.current[i];
+              // Avoid assigning if delta is extremely small -> less decoder thrashing
+              if (lastAssigned === undefined || Math.abs(lastAssigned - segmentTime) > 0.015) {
+                vid.currentTime = segmentTime;
+                lastAssignedTimeRef.current[i] = segmentTime;
+              }
             }
           } else {
             if (vid.style.opacity !== "0") vid.style.opacity = "0";
