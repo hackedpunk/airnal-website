@@ -61,12 +61,12 @@ export function Navbar() {
     >
       <div className="container max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between w-full">
         {/* LOGO */}
-        <Link href="/" className="relative z-10 flex items-center group w-[85px] md:w-[105px]">
+        <Link href="/" className="relative z-10 flex items-center group w-[45px] md:w-[54px]">
           <Image
             src="/images/airnal-logo.png"
             alt="AIRNAL Logo"
-            width={110}
-            height={30}
+            width={1536}
+            height={1024}
             className="w-full h-auto object-contain transition-all duration-300 group-hover:opacity-80"
             priority
           />
