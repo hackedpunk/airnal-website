@@ -58,6 +58,10 @@ const VIDEOS = [
 
 export function CinematicHero() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const spacerDOMRef = useRef<HTMLDivElement>(null);
+  const spacerHeightRef = useRef<number>(0);
+
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [activeState, setActiveState] = useState<number>(0);
   const [isReducedMotion, setIsReducedMotion] = useState(false);
@@ -67,7 +71,7 @@ export function CinematicHero() {
   const totalDurationRef = useRef<number>(40);
 
   // Pure refs for global non-blocking timeline engine
-  const progressObj = useRef({ target: 0 });
+  const scrollTargetObj = useRef<number>(0);
   const timeObj = useRef({ current: 0 });
   const activeStateRef = useRef(0);
   const navHiddenRef = useRef(false);
@@ -100,32 +104,41 @@ export function CinematicHero() {
     let tickFn: () => void;
 
     const ctx = gsap.context(() => {
-      ScrollTrigger.create({
-        trigger: containerRef.current,
-        start: "top top",
-        end: "bottom bottom",
-        scrub: true,
-        onUpdate: (self) => {
-          progressObj.current.target = Math.max(0, Math.min(1, self.progress));
-        },
-      });
+      if (trackRef.current) {
+        ScrollTrigger.create({
+          trigger: trackRef.current,
+          start: "top top",
+          end: "bottom bottom",
+          scrub: true,
+          onUpdate: (self) => {
+            scrollTargetObj.current = self.progress;
+          },
+        });
+      }
 
       tickFn = () => {
         const totalDuration = totalDurationRef.current;
         if (prefersReducedMotion || totalDuration === 0) return;
 
-        const targetProgress = progressObj.current.target;
+        // 1. PHYSICAL SCROLL target (mapped exclusively over the 3500vh virtual track, isolated from container expansion)
+        const targetProgress = scrollTargetObj.current;
+        const targetTime = targetProgress * totalDuration;
 
-        // Handle navbar visibility (raw scroll progress limits reactivity lag)
-        const targetNavHidden = targetProgress >= 0.03 && targetProgress <= 0.99;
-        if (targetNavHidden !== navHiddenRef.current) {
-          navHiddenRef.current = targetNavHidden;
-          window.dispatchEvent(new CustomEvent('toggle-navbar', { detail: { hidden: targetNavHidden } }));
+        // Navbar Visibility: Dynamically evaluate physical bounding box to keep navbar correctly scoped
+        if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          const scrolledIntoContainer = -rect.top;
+          const remainingRunway = rect.bottom - window.innerHeight;
+
+          const targetNavHidden = scrolledIntoContainer >= 50 && remainingRunway >= 50;
+          if (targetNavHidden !== navHiddenRef.current) {
+            navHiddenRef.current = targetNavHidden;
+            window.dispatchEvent(new CustomEvent('toggle-navbar', { detail: { hidden: targetNavHidden } }));
+          }
         }
 
-        const targetTime = targetProgress * totalDuration;
+        // 2. SMOOTH CINEMATIC ENGINE
         let currentTime = timeObj.current.current;
-
         const diff = targetTime - currentTime;
 
         if (Math.abs(diff) < 0.001) {
@@ -135,7 +148,6 @@ export function CinematicHero() {
           }
         } else {
           // Smoothing calculation provides responsive catchup for small movements
-          // Clamp deltaRatio so a single lag spike doesn't cause a massive jump in the timeline
           const deltaRatio = Math.min(gsap.ticker.deltaRatio(60) || 1, 1.5);
           const smoothingFactor = 0.08;
           let step = diff * smoothingFactor * deltaRatio;
@@ -144,8 +156,6 @@ export function CinematicHero() {
           const frameDeltaSec = deltaRatio * (1 / 60);
 
           // VELOCITY CLAMPING: Capped at maximum 2.5x cinematic playback speed
-          // Ensures a 40s sequence cannot be scrubbed visually faster than ~16 real seconds.
-          // Target jumps instantly on fast scroll, while video smoothly travels toward it without ever racing artificially fast.
           const maxTimelineSpeed = 2.5;
           const maxStep = maxTimelineSpeed * frameDeltaSec;
 
@@ -160,10 +170,32 @@ export function CinematicHero() {
           timeObj.current.current = currentTime;
         }
 
-        // Convert the clamped timeline position back into global UI progress mapping [0, 1]
-        const p = currentTime / totalDuration;
+        // 3. ACTUAL TIMELINE POSITION
+        const actualCinematicProgress = currentTime / totalDuration;
 
-        // 1. Determine active narrative state based on CLAMPED cinematic progress allowing for explicit gaps
+        // 4. COMPLETION DETECTION & DYNAMIC HOLD SPACER
+        // If the user's high-speed physical scroll outpaces the cinematic iteration,
+        // they are blocked from escaping via a purely native elastic DOM spacer stretch.
+        const isCompleted = (actualCinematicProgress >= 0.999 && targetProgress >= 0.999);
+
+        if (containerRef.current && spacerDOMRef.current && !isCompleted && targetProgress > 0) {
+          const rect = containerRef.current.getBoundingClientRect();
+          const remainingRunway = rect.bottom - window.innerHeight;
+
+          // Maintain a persistent 1.5-screen buffer ahead of them
+          const REQUIRED_RUNWAY = window.innerHeight * 1.5;
+
+          if (remainingRunway < REQUIRED_RUNWAY) {
+            const expansionNeeded = REQUIRED_RUNWAY - remainingRunway;
+            spacerHeightRef.current += expansionNeeded;
+            spacerDOMRef.current.style.height = `${spacerHeightRef.current}px`;
+          }
+        }
+
+        // Convert the actual timeline position back into global UI progress mapping [0, 1]
+        const p = actualCinematicProgress;
+
+        // Determine active narrative state based on actual cinematic progress
         let nextState = -1;
         if (p >= 0 && p < 0.18) nextState = 0;
         else if (p >= 0.21 && p < 0.39) nextState = 1;
@@ -176,7 +208,7 @@ export function CinematicHero() {
           setActiveState(nextState);
         }
 
-        // 2. Map global cinematic progress onto the exact video timeline segmentation
+        // Map global cinematic progress onto the exact video timeline segmentation
         let accumulated = 0;
         let segment = 0;
         let segmentTime = 0;
@@ -193,14 +225,13 @@ export function CinematicHero() {
 
         segmentTime = Math.max(0, Math.min(segmentTime, durationsRef.current[segment] - 0.01));
 
-        // 3. Coordinate all video elements seamlessly per-frame
+        // Coordinate all video elements seamlessly per-frame
         videoRefs.current.forEach((vid, i) => {
           if (!vid) return;
           if (i === segment) {
             if (vid.style.opacity !== "1") vid.style.opacity = "1";
             if (vid.readyState >= 2) {
               const lastAssigned = lastAssignedTimeRef.current[i];
-              // Avoid assigning if delta is extremely small -> less decoder thrashing
               if (lastAssigned === undefined || Math.abs(lastAssigned - segmentTime) > 0.015) {
                 vid.currentTime = segmentTime;
                 lastAssignedTimeRef.current[i] = segmentTime;
@@ -227,9 +258,16 @@ export function CinematicHero() {
   return (
     <section
       ref={containerRef}
-      className={`relative h-[2000vh] bg-brand-bg`}
+      className={`relative bg-brand-bg w-full`}
     >
-      <div className="sticky top-0 w-full h-screen overflow-hidden">
+      {/* Virtual Track exclusively for driving 0%->100% target mapping */}
+      <div
+        ref={trackRef}
+        className="absolute top-0 left-0 w-px pointer-events-none"
+        style={{ height: "3500vh" }}
+      />
+
+      <div className="sticky top-0 w-full h-screen overflow-hidden flex-shrink-0">
 
         {/* Cinematic Video Layer */}
         {VIDEOS.map((src, idx) => (
@@ -329,6 +367,16 @@ export function CinematicHero() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Base physical scrub padding providing perfect structural space to scrub the 3500vh track (minus sticky core) */}
+      <div className="w-full pointer-events-none" style={{ height: "3400vh" }} />
+
+      {/* Dynamic Hand-off Hold Region spacer - gracefully locks them from escaping if scrubbing too fast */}
+      <div
+        ref={spacerDOMRef}
+        className="w-full pointer-events-none"
+        style={{ height: "0px" }}
+      />
     </section>
   );
 }
