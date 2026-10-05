@@ -63,7 +63,7 @@ export function Navbar() {
         {/* LOGO */}
         <Link href="/" className="relative z-10 flex items-center group w-[45px] md:w-[54px]">
           <Image
-            src="/images/airnal-logo.png"
+            src="/images/airnal-logo.png?v=2"
             alt="AIRNAL Logo"
             width={1536}
             height={1024}
