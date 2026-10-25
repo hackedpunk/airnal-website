@@ -15,36 +15,36 @@ const NARRATIVE_STATES = [
   {
     chapter: "01",
     label: "IDENTITY",
-    heading: "AI that turns\nideas into reality.",
-    support: "Building intelligent technology for what comes next.",
+    heading: "AI-powered products.\nIntelligent solutions.",
+    support: "We combine artificial intelligence, thoughtful design, and engineering to turn complex challenges into useful, intuitive experiences.",
     hasCTA: true,
   },
   {
     chapter: "02",
     label: "PRODUCT",
     heading: "We build\nintelligent products.",
-    support: "Technology designed to turn complex ideas into simple experiences.",
+    support: "Technology designed to turn complex ideas into simple, intuitive digital experiences.",
     hasCTA: false,
   },
   {
     chapter: "03",
     label: "INTELLIGENCE",
     heading: "Intelligence\nbehind the experience.",
-    support: "AI that understands, creates and continuously improves.",
+    support: "Systems powered by AI that understand needs, create clarity, and adapt over time.",
     hasCTA: false,
   },
   {
     chapter: "04",
     label: "SOLUTIONS",
     heading: "From complexity\nto clarity.",
-    support: "AI-powered solutions built around real business problems.",
+    support: "AI solutions crafted around real business problems and practical operations.",
     hasCTA: false,
   },
   {
     chapter: "05",
     label: "VISION",
     heading: "Building\nwhat comes next.",
-    support: "A future where intelligent technology feels effortless.",
+    support: "Shaping a future where intelligent technology feels effortless and human.",
     hasCTA: false,
   },
 ];
@@ -64,24 +64,74 @@ export function CinematicHero() {
 
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [activeState, setActiveState] = useState<number>(0);
-  const [isReducedMotion, setIsReducedMotion] = useState(false);
+  const [isReducedMotion, setIsReducedMotion] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false
+  );
+  const [showScrollCue, setShowScrollCue] = useState(true);
 
-  // Durations kept strictly out of React state to safeguard against re-renders
   const durationsRef = useRef<number[]>([10, 10, 10, 10]);
   const totalDurationRef = useRef<number>(40);
-
-  // Pure refs for global non-blocking timeline engine
   const scrollTargetObj = useRef<number>(0);
-  const timeObj = useRef({ current: 0 });
-  const activeStateRef = useRef(0);
-  const navHiddenRef = useRef(false);
-  const lastAssignedTimeRef = useRef([-1, -1, -1, -1]);
+  const timeObj = useRef<{ current: number }>({ current: 0 });
+  const navHiddenRef = useRef<boolean>(false);
+  const activeStateRef = useRef<number>(0);
+  const lastAssignedTimeRef = useRef<{ [key: number]: number }>({});
+  const isSkippedRef = useRef<boolean>(false);
+  const isProgrammaticallyScrollingRef = useRef<boolean>(false);
+  const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
 
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setIsReducedMotion(prefersReducedMotion);
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handleMediaChange = (e: MediaQueryListEvent) => {
+      setIsReducedMotion(e.matches);
+    };
+    mediaQuery.addEventListener("change", handleMediaChange);
 
-    // Initial check for loadedmetadata to measure true combined timeline
+    const handleWindowScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY > 10) {
+        setShowScrollCue(false);
+      } else {
+        setShowScrollCue(true);
+      }
+
+      // If we are currently programmatically scrolling away from the top, ignore sub-10px scroll events
+      if (isProgrammaticallyScrollingRef.current) {
+        if (currentScrollY > 50) {
+          isProgrammaticallyScrollingRef.current = false;
+        }
+        return;
+      }
+
+      if (currentScrollY < 10 && isSkippedRef.current) {
+        isSkippedRef.current = false;
+        scrollTargetObj.current = 0;
+        timeObj.current.current = 0;
+        setActiveState(0);
+        activeStateRef.current = 0;
+        lastAssignedTimeRef.current = {};
+
+        // Reset video elements back to time 0 and update opacities
+        videoRefs.current.forEach((vid, i) => {
+          if (!vid) return;
+          try {
+            vid.currentTime = 0;
+          } catch {}
+          vid.style.opacity = i === 0 ? "1" : "0";
+        });
+
+        // Reset ScrollTrigger position & progress
+        if (scrollTriggerRef.current) {
+          scrollTriggerRef.current.scroll(0);
+          scrollTriggerRef.current.update();
+        }
+
+        window.dispatchEvent(new CustomEvent('toggle-navbar', { detail: { hidden: false } }));
+      }
+    };
+    window.addEventListener("scroll", handleWindowScroll, { passive: true });
+
     const updateDurations = () => {
       let total = 0;
       const durs = videoRefs.current.map((vid) => {
@@ -95,7 +145,8 @@ export function CinematicHero() {
 
     updateDurations();
 
-    videoRefs.current.forEach((vid) => {
+    const currentVideos = videoRefs.current;
+    currentVideos.forEach((vid) => {
       if (vid) {
         vid.addEventListener("loadedmetadata", updateDurations);
       }
@@ -105,26 +156,26 @@ export function CinematicHero() {
 
     const ctx = gsap.context(() => {
       if (trackRef.current) {
-        ScrollTrigger.create({
+        scrollTriggerRef.current = ScrollTrigger.create({
           trigger: trackRef.current,
           start: "top top",
           end: "bottom bottom",
           scrub: true,
           onUpdate: (self) => {
+            if (isSkippedRef.current) return;
             scrollTargetObj.current = self.progress;
           },
         });
       }
 
       tickFn = () => {
+        if (isSkippedRef.current) return;
         const totalDuration = totalDurationRef.current;
-        if (prefersReducedMotion || totalDuration === 0) return;
+        if (isReducedMotion || totalDuration === 0) return;
 
-        // 1. PHYSICAL SCROLL target (mapped exclusively over the 3500vh virtual track, isolated from container expansion)
         const targetProgress = scrollTargetObj.current;
         const targetTime = targetProgress * totalDuration;
 
-        // Navbar Visibility: Dynamically evaluate physical bounding box to keep navbar correctly scoped
         if (containerRef.current) {
           const rect = containerRef.current.getBoundingClientRect();
           const scrolledIntoContainer = -rect.top;
@@ -137,7 +188,6 @@ export function CinematicHero() {
           }
         }
 
-        // 2. SMOOTH CINEMATIC ENGINE
         let currentTime = timeObj.current.current;
         const diff = targetTime - currentTime;
 
@@ -147,15 +197,11 @@ export function CinematicHero() {
             timeObj.current.current = currentTime;
           }
         } else {
-          // Smoothing calculation provides responsive catchup for small movements
           const deltaRatio = Math.min(gsap.ticker.deltaRatio(60) || 1, 1.5);
           const smoothingFactor = 0.08;
           let step = diff * smoothingFactor * deltaRatio;
 
-          // Real time delta (assuming ~60fps baseline for deltaRatio)
           const frameDeltaSec = deltaRatio * (1 / 60);
-
-          // VELOCITY CLAMPING: Capped at maximum 2.5x cinematic playback speed
           const maxTimelineSpeed = 2.5;
           const maxStep = maxTimelineSpeed * frameDeltaSec;
 
@@ -164,25 +210,16 @@ export function CinematicHero() {
           }
 
           currentTime += step;
-
-          // Final safety bound
           currentTime = Math.max(0, Math.min(currentTime, totalDuration));
           timeObj.current.current = currentTime;
         }
 
-        // 3. ACTUAL TIMELINE POSITION
         const actualCinematicProgress = currentTime / totalDuration;
-
-        // 4. COMPLETION DETECTION & DYNAMIC HOLD SPACER
-        // If the user's high-speed physical scroll outpaces the cinematic iteration,
-        // they are blocked from escaping via a purely native elastic DOM spacer stretch.
         const isCompleted = (actualCinematicProgress >= 0.999 && targetProgress >= 0.999);
 
         if (containerRef.current && spacerDOMRef.current && !isCompleted && targetProgress > 0) {
           const rect = containerRef.current.getBoundingClientRect();
           const remainingRunway = rect.bottom - window.innerHeight;
-
-          // Maintain a persistent 1.5-screen buffer ahead of them
           const REQUIRED_RUNWAY = window.innerHeight * 1.5;
 
           if (remainingRunway < REQUIRED_RUNWAY) {
@@ -192,10 +229,8 @@ export function CinematicHero() {
           }
         }
 
-        // Convert the actual timeline position back into global UI progress mapping [0, 1]
         const p = actualCinematicProgress;
 
-        // Determine active narrative state based on actual cinematic progress
         let nextState = -1;
         if (p >= 0 && p < 0.18) nextState = 0;
         else if (p >= 0.21 && p < 0.39) nextState = 1;
@@ -208,7 +243,6 @@ export function CinematicHero() {
           setActiveState(nextState);
         }
 
-        // Map global cinematic progress onto the exact video timeline segmentation
         let accumulated = 0;
         let segment = 0;
         let segmentTime = 0;
@@ -225,7 +259,6 @@ export function CinematicHero() {
 
         segmentTime = Math.max(0, Math.min(segmentTime, durationsRef.current[segment] - 0.01));
 
-        // Coordinate all video elements seamlessly per-frame
         videoRefs.current.forEach((vid, i) => {
           if (!vid) return;
           if (i === segment) {
@@ -246,14 +279,63 @@ export function CinematicHero() {
       gsap.ticker.add(tickFn);
     }, containerRef);
 
+    const handleSkipToSection = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const targetId = customEvent.detail?.targetId;
+      if (!targetId) return;
+
+      isSkippedRef.current = true;
+      isProgrammaticallyScrollingRef.current = true;
+      setShowScrollCue(false);
+
+      if (targetId === "top") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        window.scrollTo({
+          top: targetEl.offsetTop,
+          behavior: "smooth"
+        });
+      }
+    };
+
+    window.addEventListener("skip-to-section", handleSkipToSection);
+
     return () => {
+      window.removeEventListener("scroll", handleWindowScroll);
+      window.removeEventListener("skip-to-section", handleSkipToSection);
+      mediaQuery.removeEventListener("change", handleMediaChange);
       if (tickFn) gsap.ticker.remove(tickFn);
       ctx.revert();
-      videoRefs.current.forEach((vid) => {
+      currentVideos.forEach((vid) => {
         if (vid) vid.removeEventListener("loadedmetadata", updateDurations);
       });
     };
-  }, []);
+  }, [isReducedMotion]);
+
+  const handleExploreClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    isSkippedRef.current = true;
+    isProgrammaticallyScrollingRef.current = true;
+    setShowScrollCue(false);
+
+    const aboutSection = document.getElementById("about");
+    if (aboutSection) {
+      window.scrollTo({
+        top: aboutSection.offsetTop,
+        behavior: "smooth"
+      });
+    } else if (containerRef.current) {
+      const containerBottom = containerRef.current.offsetTop + containerRef.current.offsetHeight;
+      window.scrollTo({
+        top: containerBottom,
+        behavior: "smooth"
+      });
+    }
+  };
 
   return (
     <section
@@ -320,6 +402,7 @@ export function CinematicHero() {
                     <div className="flex flex-col sm:flex-row gap-4">
                       <Link
                         href="#about"
+                        onClick={handleExploreClick}
                         className="group inline-flex items-center justify-center px-8 py-4 text-[13px] font-medium tracking-wide text-brand-bg bg-brand-ivory hover:bg-metallic hover:-translate-y-[1px] transition-all duration-300 rounded-[2px]"
                       >
                         Explore AIRNAL
@@ -366,9 +449,26 @@ export function CinematicHero() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Premium Scroll Cue */}
+        <AnimatePresence>
+          {showScrollCue && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 hidden sm:flex items-center pointer-events-none"
+            >
+              <span className="text-[11px] font-semibold tracking-[0.3em] text-brand-ivory/80 uppercase animate-pulse">
+                SCROLL TO EXPERIENCE
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Base physical scrub padding providing perfect structural space to scrub the 3500vh track (minus sticky core) */}
+      {/* Base physical scroll padding providing perfect structural space to scrub the 3500vh track (minus sticky core) */}
       <div className="w-full pointer-events-none" style={{ height: "3400vh" }} />
 
       {/* Dynamic Hand-off Hold Region spacer - gracefully locks them from escaping if scrubbing too fast */}

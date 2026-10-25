@@ -25,8 +25,6 @@ export function LaunchModal() {
     if (isOpen) {
       window.addEventListener("keydown", handleEsc);
       document.body.style.overflow = "hidden";
-    } else {
-      setShowOptions(false);
     }
 
     return () => {
@@ -34,6 +32,11 @@ export function LaunchModal() {
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
+
+  // Close options when modal closes
+  const handleToggleOptions = () => {
+    setShowOptions(prev => !prev);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -101,10 +104,7 @@ END:VCALENDAR`;
 
   const handleContactUs = () => {
     setIsOpen(false);
-    const contactSection = document.getElementById("contact");
-    if (contactSection) {
-      contactSection.scrollIntoView({ behavior: "smooth" });
-    }
+    window.dispatchEvent(new CustomEvent("skip-to-section", { detail: { targetId: "contact" } }));
   };
 
   return (
@@ -230,7 +230,7 @@ END:VCALENDAR`;
                 {/* CTA Action */}
                 <div className="relative w-full max-w-sm">
                   <button
-                    onClick={() => setShowOptions(!showOptions)}
+                    onClick={handleToggleOptions}
                     className="group/btn inline-flex items-center justify-center w-full px-8 py-5 text-[12px] font-semibold tracking-widest text-brand-ivory hover:text-[#101010] border border-[var(--color-metallic-gold-shadow)]/40 hover:border-transparent hover:bg-metallic bg-[#101010] active:scale-[0.98] transition-all duration-300 rounded-sm uppercase focus:outline-none focus:ring-2 focus:ring-[var(--color-metallic-gold-mid)] focus:ring-offset-4 focus:ring-offset-[#101010]"
                     aria-expanded={showOptions}
                     aria-haspopup="true"

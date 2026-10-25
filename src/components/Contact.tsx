@@ -28,7 +28,7 @@ Best,
       navigator.clipboard.writeText(email).then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-      }).catch(err => {
+      }).catch(() => {
         fallbackCopyTextToClipboard(email);
       });
     } else {

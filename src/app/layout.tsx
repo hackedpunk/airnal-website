@@ -9,10 +9,15 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AIRNAL — AI That Turns Ideas Into Reality",
+  title: "AIRNAL",
   description: "AIRNAL is an AI technology company building intelligent products and AI-powered solutions.",
+  icons: {
+    icon: "/favicon-emblem.png",
+    shortcut: "/favicon-emblem.png",
+    apple: "/favicon-emblem.png",
+  },
   openGraph: {
-    title: "AIRNAL — AI That Turns Ideas Into Reality",
+    title: "AIRNAL",
     description: "AIRNAL is an AI technology company building intelligent products and AI-powered solutions.",
     url: "https://airnal.in",
     siteName: "AIRNAL",

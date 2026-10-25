@@ -49,6 +49,13 @@ export function Navbar() {
     };
   }, []);
 
+  const handleNavLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+
+    window.dispatchEvent(new CustomEvent("skip-to-section", { detail: { targetId: href.replace("#", "") } }));
+  };
+
   return (
     <header
       className={cn(
@@ -78,6 +85,7 @@ export function Navbar() {
             <Link
               key={link.name}
               href={link.href}
+              onClick={(e) => handleNavLinkClick(e, link.href)}
               className="text-[13px] tracking-wide text-brand-text-secondary hover:text-brand-ivory transition-colors duration-300"
             >
               {link.name}
@@ -120,7 +128,7 @@ export function Navbar() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(e) => handleNavLinkClick(e, link.href)}
                   className="text-lg tracking-wide text-brand-text-secondary hover:text-brand-ivory transition-colors duration-300"
                 >
                   {link.name}
