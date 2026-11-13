@@ -49,6 +49,18 @@ export function Navbar() {
     };
   }, []);
 
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+
+    // If we are already on the homepage (pathname === "/"), smoothly scroll to top and reset hero state
+    if (typeof window !== "undefined" && window.location.pathname === "/") {
+      window.dispatchEvent(new CustomEvent("skip-to-section", { detail: { targetId: "top" } }));
+    } else {
+      window.location.href = "/";
+    }
+  };
+
   const handleNavLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
     setMobileMenuOpen(false);
@@ -68,7 +80,7 @@ export function Navbar() {
     >
       <div className="container max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between w-full">
         {/* LOGO */}
-        <Link href="/" className="relative z-10 flex items-center group w-[45px] md:w-[54px]">
+        <Link href="/" onClick={handleLogoClick} className="relative z-10 flex items-center group w-[45px] md:w-[54px]">
           <Image
             src="/images/airnal-logo.png?v=2"
             alt="AIRNAL Logo"
