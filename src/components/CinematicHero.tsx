@@ -373,8 +373,8 @@ export function CinematicHero() {
         <div className="absolute inset-0 shadow-[inset_0_0_150px_rgba(7,7,7,0.7)] pointer-events-none" />
 
         {/* Narrative Framework */}
-        <div className="container relative z-10 mx-auto px-6 md:px-12 h-full flex flex-col justify-center">
-          <div className="max-w-2xl mt-12 md:mt-0 w-full md:w-[45%]">
+        <div className="container max-w-[1440px] relative z-10 mx-auto px-6 md:px-16 h-full flex flex-col justify-center">
+          <div className="max-w-2xl md:max-w-4xl mt-12 md:mt-0 w-full md:w-[62%] lg:w-[55%]">
             <AnimatePresence mode="wait">
               {activeState !== -1 && NARRATIVE_STATES[activeState] && (
                 <motion.div
